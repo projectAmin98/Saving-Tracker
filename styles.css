@@ -142,6 +142,21 @@ header h1 {
     box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
 }
 
+/* Form Row for side-by-side layout */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
 /* Button Styles */
 .btn {
     padding: 12px 24px;
@@ -194,6 +209,112 @@ header h1 {
 .btn-small {
     padding: 6px 12px;
     font-size: 0.875rem;
+}
+
+.btn-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #45a049;
+}
+
+.btn-warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #f57c00;
+}
+
+/* Achievement Status Styles */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: center;
+    display: inline-block;
+    min-width: 80px;
+}
+
+.status-achieved {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.status-pending {
+    background-color: #ff9800;
+    color: white;
+}
+
+.status-achieved-row {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.status-pending-row {
+    background-color: rgba(255, 152, 0, 0.05);
+}
+
+/* Summary Breakdown Styles */
+.summary-breakdown {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: var(--background-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.summary-breakdown h4 {
+    color: var(--text-color);
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.breakdown-item label {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.breakdown-value {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.breakdown-value.achieved {
+    color: #4CAF50;
+}
+
+.breakdown-value.pending {
+    color: #ff9800;
+}
+
+.breakdown-value.bonus {
+    color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .breakdown-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Table Styles */
