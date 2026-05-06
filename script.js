@@ -66,14 +66,18 @@ class SavingsTracker {
             }
         }
 
-        // Migrate old bonus savings format to include year
+        // Migrate old bonus savings format to include year and achievement status
         if (this.data.bonusSavings && this.data.bonusSavings.length > 0) {
             this.data.bonusSavings = this.data.bonusSavings.map(bonus => {
-                if (!bonus.year) {
+                const migratedBonus = { ...bonus };
+                if (!migratedBonus.year) {
                     const currentYear = new Date().getFullYear();
-                    return { ...bonus, year: currentYear };
+                    migratedBonus.year = currentYear;
                 }
-                return bonus;
+                if (migratedBonus.achieved === undefined) {
+                    migratedBonus.achieved = false;
+                }
+                return migratedBonus;
             });
         }
     }
@@ -343,6 +347,7 @@ class SavingsTracker {
             month,
             description,
             amount,
+            achieved: false,
             date: new Date().toLocaleDateString()
         };
 
@@ -358,17 +363,41 @@ class SavingsTracker {
         this.updateBonusSavingsDisplay();
         this.updateSummaryDisplay();
         this.updateProjectionDisplay();
-        this.showToast(`Added bonus: ${month} ${year} - ${description} - RM${amount.toFixed(2)}`, 'success');
+        this.showToast(`Added extra income: ${month} ${year} - ${description} - RM${amount.toFixed(2)}`, 'success');
+    }
+
+    markBonusAsAchieved(id) {
+        const bonus = this.data.bonusSavings.find(b => b.id === id);
+        if (bonus) {
+            bonus.achieved = true;
+            this.saveData();
+            this.updateBonusSavingsDisplay();
+            this.updateSummaryDisplay();
+            this.updateProjectionDisplay();
+            this.showToast(`Marked "${bonus.description}" as achieved`, 'success');
+        }
+    }
+
+    markBonusAsPending(id) {
+        const bonus = this.data.bonusSavings.find(b => b.id === id);
+        if (bonus) {
+            bonus.achieved = false;
+            this.saveData();
+            this.updateBonusSavingsDisplay();
+            this.updateSummaryDisplay();
+            this.updateProjectionDisplay();
+            this.showToast(`Marked "${bonus.description}" as pending`, 'success');
+        }
     }
 
     deleteBonusSavings(id) {
-        if (confirm('Delete this bonus entry?')) {
+        if (confirm('Delete this extra income entry?')) {
             this.data.bonusSavings = this.data.bonusSavings.filter(bonus => bonus.id !== id);
             this.saveData();
             this.updateBonusSavingsDisplay();
             this.updateSummaryDisplay();
             this.updateProjectionDisplay();
-            this.showToast('Bonus entry deleted', 'success');
+            this.showToast('Extra income entry deleted', 'success');
         }
     }
 
@@ -380,7 +409,7 @@ class SavingsTracker {
         let total = 0;
 
         if (this.data.bonusSavings.length === 0) {
-            bonusList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No bonus savings yet</p>';
+            bonusList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No extra income yet</p>';
         } else {
             // Sort bonus savings by year, month, and date
             const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 
@@ -402,19 +431,35 @@ class SavingsTracker {
 
             sortedBonus.forEach(bonus => {
                 total += bonus.amount;
+                const achieved = bonus.achieved || false;
 
                 const bonusItem = document.createElement('div');
-                bonusItem.className = 'bonus-item';
+                bonusItem.className = `bonus-item ${achieved ? 'status-achieved-row' : 'status-pending-row'}`;
                 bonusItem.innerHTML = `
                     <div class="bonus-info">
                         <div class="bonus-description">${bonus.month} ${bonus.year} - ${bonus.description}</div>
-                        <small style="color: var(--text-secondary);">${bonus.date}</small>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            <span class="status-badge ${achieved ? 'status-achieved' : 'status-pending'}">
+                                ${achieved ? 'Achieved' : 'Pending'}
+                            </span>
+                            <small style="color: var(--text-secondary);">${bonus.date}</small>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                         <span class="bonus-amount">RM${bonus.amount.toFixed(2)}</span>
-                        <button class="btn btn-danger btn-small" onclick="tracker.deleteBonusSavings(${bonus.id})">
-                            Delete
-                        </button>
+                        <div style="display: flex; gap: 5px;">
+                            ${achieved 
+                                ? `<button class="btn btn-warning btn-small" onclick="tracker.markBonusAsPending(${bonus.id})">
+                                    Pending
+                                  </button>`
+                                : `<button class="btn btn-success btn-small" onclick="tracker.markBonusAsAchieved(${bonus.id})">
+                                    Done
+                                  </button>`
+                            }
+                            <button class="btn btn-danger btn-small" onclick="tracker.deleteBonusSavings(${bonus.id})">
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 `;
                 bonusList.appendChild(bonusItem);
@@ -448,8 +493,12 @@ class SavingsTracker {
         const achievedMonthlyTotal = monthlyData.filter(data => data.achieved).reduce((sum, data) => sum + data.amount, 0);
         const pendingMonthlyTotal = monthlyTotal - achievedMonthlyTotal;
         
-        const bonusTotal = this.data.bonusSavings.reduce((sum, bonus) => sum + bonus.amount, 0);
-        const totalSavings = achievedMonthlyTotal + bonusTotal;
+        const bonusData = this.data.bonusSavings;
+        const bonusTotal = bonusData.reduce((sum, bonus) => sum + bonus.amount, 0);
+        const achievedBonusTotal = bonusData.filter(bonus => bonus.achieved).reduce((sum, bonus) => sum + bonus.amount, 0);
+        const pendingBonusTotal = bonusTotal - achievedBonusTotal;
+        
+        const totalSavings = achievedMonthlyTotal + achievedBonusTotal;
         const remaining = Math.max(0, this.data.savingsGoal - totalSavings);
         const percentage = Math.min(100, (totalSavings / this.data.savingsGoal) * 100);
 
@@ -469,10 +518,10 @@ class SavingsTracker {
         }
 
         // Update summary breakdown if element exists
-        this.updateSummaryBreakdown(achievedMonthlyTotal, pendingMonthlyTotal, bonusTotal);
+        this.updateSummaryBreakdown(achievedMonthlyTotal, pendingMonthlyTotal, achievedBonusTotal, pendingBonusTotal);
     }
 
-    updateSummaryBreakdown(achievedMonthly, pendingMonthly, bonusTotal) {
+    updateSummaryBreakdown(achievedMonthly, pendingMonthly, achievedBonus, pendingBonus) {
         // Create or update summary breakdown section
         let breakdownDiv = document.getElementById('summaryBreakdown');
         if (!breakdownDiv) {
@@ -497,8 +546,12 @@ class SavingsTracker {
                     <span class="breakdown-value pending">RM${pendingMonthly.toFixed(2)}</span>
                 </div>
                 <div class="breakdown-item">
-                    <label>Bonus Savings:</label>
-                    <span class="breakdown-value bonus">RM${bonusTotal.toFixed(2)}</span>
+                    <label>Achieved Extra Income:</label>
+                    <span class="breakdown-value achieved">RM${achievedBonus.toFixed(2)}</span>
+                </div>
+                <div class="breakdown-item">
+                    <label>Pending Extra Income:</label>
+                    <span class="breakdown-value pending">RM${pendingBonus.toFixed(2)}</span>
                 </div>
             </div>
         `;
@@ -512,8 +565,10 @@ class SavingsTracker {
         const achievedMonthlyCount = achievedMonthlyData.length;
         const averageMonthly = achievedMonthlyCount > 0 ? achievedMonthlyTotal / achievedMonthlyCount : 0;
         
-        const bonusTotal = this.data.bonusSavings.reduce((sum, bonus) => sum + bonus.amount, 0);
-        const totalSavings = achievedMonthlyTotal + bonusTotal;
+        const bonusData = this.data.bonusSavings;
+        const achievedBonusData = bonusData.filter(bonus => bonus.achieved);
+        const achievedBonusTotal = achievedBonusData.reduce((sum, bonus) => sum + bonus.amount, 0);
+        const totalSavings = achievedMonthlyTotal + achievedBonusTotal;
         const remaining = Math.max(0, this.data.savingsGoal - totalSavings);
 
         // Calculate projections based on achieved amounts only
@@ -596,7 +651,7 @@ class SavingsTracker {
         
         // Monthly Savings
         csvContent += 'Monthly Savings\n';
-        csvContent += 'Year,Month,Amount\n';
+        csvContent += 'Year,Month,Amount,Status\n';
         const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 
                           'July', 'August', 'September', 'October', 'November', 'December'];
         const sortedKeys = Object.keys(this.data.monthlySavings).sort((a, b) => {
@@ -611,29 +666,35 @@ class SavingsTracker {
         
         sortedKeys.forEach(key => {
             const [year, month] = key.split('-');
-            csvContent += `${year},${month},RM${this.data.monthlySavings[key].toFixed(2)}\n`;
+            const savingsData = this.data.monthlySavings[key];
+            csvContent += `${year},${month},RM${savingsData.amount.toFixed(2)},${savingsData.achieved ? 'Achieved' : 'Pending'}\n`;
         });
         
-        const monthlyTotal = Object.values(this.data.monthlySavings).reduce((sum, amount) => sum + amount, 0);
+        const monthlyTotal = Object.values(this.data.monthlySavings).reduce((sum, data) => sum + data.amount, 0);
         csvContent += `Total Monthly Savings,RM${monthlyTotal.toFixed(2)}\n\n`;
         
-        // Bonus Savings
-        csvContent += 'Bonus Savings\n';
-        csvContent += 'Year,Month,Description,Amount,Date\n';
+        // Extra Income
+        csvContent += 'Extra Income\n';
+        csvContent += 'Year,Month,Description,Amount,Status,Date\n';
         this.data.bonusSavings.forEach(bonus => {
-            csvContent += `${bonus.year},${bonus.month},"${bonus.description}",RM${bonus.amount.toFixed(2)},${bonus.date}\n`;
+            csvContent += `${bonus.year},${bonus.month},"${bonus.description}",RM${bonus.amount.toFixed(2)},${bonus.achieved ? 'Achieved' : 'Pending'},${bonus.date}\n`;
         });
         
         const bonusTotal = this.data.bonusSavings.reduce((sum, bonus) => sum + bonus.amount, 0);
-        csvContent += `Total Bonus Savings,RM${bonusTotal.toFixed(2)}\n\n`;
+        csvContent += `Total Extra Income,RM${bonusTotal.toFixed(2)}\n\n`;
         
-        // Summary
-        const totalSavings = monthlyTotal + bonusTotal;
+        // Summary with achieved amounts
+        const achievedMonthlyTotal = Object.values(this.data.monthlySavings).filter(data => data.achieved).reduce((sum, data) => sum + data.amount, 0);
+        const achievedBonusTotal = this.data.bonusSavings.filter(bonus => bonus.achieved).reduce((sum, bonus) => sum + bonus.amount, 0);
+        const achievedTotal = achievedMonthlyTotal + achievedBonusTotal;
+        
         csvContent += 'Summary\n';
         csvContent += `Savings Goal,RM${this.data.savingsGoal.toFixed(2)}\n`;
-        csvContent += `Total Savings,RM${totalSavings.toFixed(2)}\n`;
-        csvContent += `Remaining,RM${Math.max(0, this.data.savingsGoal - totalSavings).toFixed(2)}\n`;
-        csvContent += `Progress,${((totalSavings / this.data.savingsGoal) * 100).toFixed(1)}%\n`;
+        csvContent += `Achieved Monthly Total,RM${achievedMonthlyTotal.toFixed(2)}\n`;
+        csvContent += `Achieved Extra Income Total,RM${achievedBonusTotal.toFixed(2)}\n`;
+        csvContent += `Total Achieved Savings,RM${achievedTotal.toFixed(2)}\n`;
+        csvContent += `Remaining to Goal,RM${Math.max(0, this.data.savingsGoal - achievedTotal).toFixed(2)}\n`;
+        csvContent += `Progress Percentage,${((achievedTotal / this.data.savingsGoal) * 100).toFixed(1)}%\n`;
 
         // Create download link
         const encodedUri = encodeURI(csvContent);
