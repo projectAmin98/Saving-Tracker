@@ -8,226 +8,29 @@ class SavingsTracker {
         };
         this.currentEditItem = null;
         this.editType = null;
-        this.currentUser = null;
-        this.serverUrl = 'http://localhost:3000/api'; // Server endpoint
         this.initializeApp();
     }
 
     initializeApp() {
-        this.checkAuthentication();
+        this.loadData();
+        this.populateYearSelects();
         this.setupEventListeners();
         this.setupDarkMode();
-    }
-
-    checkAuthentication() {
-        const token = localStorage.getItem('authToken');
-        const user = localStorage.getItem('currentUser');
-        
-        if (token && user) {
-            this.currentUser = JSON.parse(user);
-            this.showMainApp();
-            this.loadData();
-            this.populateYearSelects();
-            this.updateAllDisplays();
-        } else {
-            this.showLoginModal();
-        }
-    }
-
-    showLoginModal() {
-        document.getElementById('loginModal').style.display = 'block';
-        document.getElementById('registrationModal').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'none';
-    }
-
-    showRegistration() {
-        document.getElementById('loginModal').style.display = 'none';
-        document.getElementById('registrationModal').style.display = 'block';
-        document.getElementById('mainApp').style.display = 'none';
-    }
-
-    closeRegistrationModal() {
-        document.getElementById('registrationModal').style.display = 'none';
-        this.showLoginModal();
-    }
-
-    showMainApp() {
-        document.getElementById('loginModal').style.display = 'none';
-        document.getElementById('registrationModal').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-    }
-
-    // Authentication Functions
-    async login() {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-        const rememberMe = document.getElementById('rememberMe').checked;
-
-        if (!username || !password) {
-            this.showToast('Please enter username and password', 'error');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${this.serverUrl}/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password, rememberMe })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                this.currentUser = data.user;
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('currentUser', JSON.stringify(data.user));
-                this.showToast(`Welcome back, ${data.user.username}!`, 'success');
-                this.showMainApp();
-                this.loadData();
-                this.populateYearSelects();
-                this.updateAllDisplays();
-            } else {
-                this.showToast(data.message || 'Login failed', 'error');
-            }
-        } catch (error) {
-            this.showToast('Login error. Please try again.', 'error');
-            console.error('Login error:', error);
-        }
-    }
-
-    async register() {
-        const username = document.getElementById('regUsername').value.trim();
-        const email = document.getElementById('regEmail').value.trim();
-        const password = document.getElementById('regPassword').value;
-        const confirmPassword = document.getElementById('regConfirmPassword').value;
-
-        if (!username || !email || !password || !confirmPassword) {
-            this.showToast('Please fill in all fields', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            this.showToast('Passwords do not match', 'error');
-            return;
-        }
-
-        if (password.length < 6) {
-            this.showToast('Password must be at least 6 characters', 'error');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${this.serverUrl}/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, email, password })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                this.showToast('Account created successfully! Please login.', 'success');
-                this.closeRegistrationModal();
-                // Clear form
-                document.getElementById('regUsername').value = '';
-                document.getElementById('regEmail').value = '';
-                document.getElementById('regPassword').value = '';
-                document.getElementById('regConfirmPassword').value = '';
-            } else {
-                this.showToast(data.message || 'Registration failed', 'error');
-            }
-        } catch (error) {
-            this.showToast('Registration error. Please try again.', 'error');
-            console.error('Registration error:', error);
-        }
-    }
-
-    logout() {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            this.currentUser = null;
-            this.showToast('Logged out successfully', 'success');
-            this.showLoginModal();
-        }
+        this.updateAllDisplays();
     }
 
     // Data Management
-    async loadData() {
-        if (!this.currentUser) {
-            // Fallback to localStorage for demo
-            const savedData = localStorage.getItem('savingsTrackerData');
-            if (savedData) {
-                this.data = JSON.parse(savedData);
-                this.migrateDataFormat();
-            }
-            return;
-        }
-
-        try {
-            const token = localStorage.getItem('authToken');
-            const response = await fetch(`${this.serverUrl}/data`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                this.data = data;
-                this.migrateDataFormat();
-            } else {
-                // Fallback to localStorage if server fails
-                const savedData = localStorage.getItem('savingsTrackerData');
-                if (savedData) {
-                    this.data = JSON.parse(savedData);
-                    this.migrateDataFormat();
-                }
-            }
-        } catch (error) {
-            console.error('Error loading data from server:', error);
-            // Fallback to localStorage
-            const savedData = localStorage.getItem('savingsTrackerData');
-            if (savedData) {
-                this.data = JSON.parse(savedData);
-                this.migrateDataFormat();
-            }
+    loadData() {
+        const savedData = localStorage.getItem('savingsTrackerData');
+        if (savedData) {
+            this.data = JSON.parse(savedData);
+            // Migrate old data format to new format with years
+            this.migrateDataFormat();
         }
     }
 
-    async saveData() {
-        // Always save to localStorage as backup
+    saveData() {
         localStorage.setItem('savingsTrackerData', JSON.stringify(this.data));
-        
-        if (!this.currentUser) {
-            return; // Only save to server if user is logged in
-        }
-
-        try {
-            const token = localStorage.getItem('authToken');
-            const response = await fetch(`${this.serverUrl}/data`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(this.data)
-            });
-
-            if (!response.ok) {
-                console.error('Failed to save data to server');
-                this.showToast('Failed to sync with server. Data saved locally.', 'error');
-            }
-        } catch (error) {
-            console.error('Error saving data to server:', error);
-            this.showToast('Server sync failed. Data saved locally.', 'error');
-        }
     }
 
     migrateDataFormat() {
@@ -341,7 +144,6 @@ class SavingsTracker {
         document.getElementById('darkModeToggle').addEventListener('click', () => this.toggleDarkMode());
         document.getElementById('resetData').addEventListener('click', () => this.resetData());
         document.getElementById('exportCSV').addEventListener('click', () => this.exportToCSV());
-        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
 
         // Modal event listeners
         window.addEventListener('click', (event) => {
@@ -650,6 +452,12 @@ class SavingsTracker {
         const modalTitle = document.getElementById('modalTitle');
         const amountInput = document.getElementById('editAmount');
         const descriptionInput = document.getElementById('editDescription');
+        const yearSelect = document.getElementById('editYear');
+        const monthSelect = document.getElementById('editMonth');
+        const dateFields = document.getElementById('editDateFields');
+        
+        // Populate year select options
+        this.populateEditYearSelect();
         
         if (type === 'monthly') {
             const [year, month] = item.split('-');
@@ -658,12 +466,22 @@ class SavingsTracker {
             amountInput.value = savingsData.amount;
             descriptionInput.value = `${month} ${year} Savings`;
             descriptionInput.disabled = true;
+            
+            // Show date fields and set current values
+            dateFields.style.display = 'block';
+            yearSelect.value = year;
+            monthSelect.value = month;
         } else if (type === 'bonus') {
             const bonus = this.data.bonusSavings.find(b => b.id === item);
             modalTitle.textContent = 'Edit Extra Income';
             amountInput.value = bonus.amount;
             descriptionInput.value = bonus.description;
             descriptionInput.disabled = false;
+            
+            // Show date fields and set current values
+            dateFields.style.display = 'block';
+            yearSelect.value = bonus.year;
+            monthSelect.value = bonus.month;
         }
         
         modal.style.display = 'block';
@@ -680,11 +498,35 @@ class SavingsTracker {
         document.getElementById('editAmount').value = '';
         document.getElementById('editDescription').value = '';
         document.getElementById('editDescription').disabled = false;
+        
+        // Hide date fields
+        document.getElementById('editDateFields').style.display = 'none';
+    }
+
+    populateEditYearSelect() {
+        const yearSelect = document.getElementById('editYear');
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        
+        // Generate years from current year to 5 years back and 5 years forward
+        for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+            years.push(year);
+        }
+        
+        yearSelect.innerHTML = '<option value="">Choose a year...</option>';
+        years.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        });
     }
 
     saveEdit() {
         const amountInput = document.getElementById('editAmount');
         const descriptionInput = document.getElementById('editDescription');
+        const yearSelect = document.getElementById('editYear');
+        const monthSelect = document.getElementById('editMonth');
         const newAmount = parseFloat(amountInput.value);
         
         if (isNaN(newAmount) || newAmount <= 0) {
@@ -693,14 +535,47 @@ class SavingsTracker {
         }
         
         if (this.editType === 'monthly') {
-            const [year, month] = this.currentEditItem.split('-');
-            this.data.monthlySavings[this.currentEditItem].amount = newAmount;
-            this.showToast(`Updated ${month} ${year} savings: RM${newAmount.toFixed(2)}`, 'success');
+            const oldKey = this.currentEditItem;
+            const [oldYear, OldMonth] = oldKey.split('-');
+            const newYear = yearSelect.value;
+            const newMonth = monthSelect.value;
+            
+            if (!newYear || !newMonth) {
+                this.showToast('Please select year and month', 'error');
+                return;
+            }
+            
+            // Create new key and move data
+            const newKey = `${newYear}-${newMonth}`;
+            
+            // If key changed, delete old entry and create new one
+            if (newKey !== oldKey) {
+                this.data.monthlySavings[newKey] = {
+                    amount: newAmount,
+                    achieved: this.data.monthlySavings[oldKey].achieved || false
+                };
+                delete this.data.monthlySavings[oldKey];
+                this.showToast(`Moved ${OldMonth} ${OldYear} to ${newMonth} ${newYear}: RM${newAmount.toFixed(2)}`, 'success');
+            } else {
+                // Just update amount if same date
+                this.data.monthlySavings[oldKey].amount = newAmount;
+                this.showToast(`Updated ${OldMonth} ${OldYear} savings: RM${newAmount.toFixed(2)}`, 'success');
+            }
         } else if (this.editType === 'bonus') {
             const bonus = this.data.bonusSavings.find(b => b.id === this.currentEditItem);
+            const newYear = yearSelect.value;
+            const newMonth = monthSelect.value;
+            
+            if (!newYear || !newMonth) {
+                this.showToast('Please select year and month', 'error');
+                return;
+            }
+            
             bonus.amount = newAmount;
+            bonus.year = newYear;
+            bonus.month = newMonth;
             bonus.description = descriptionInput.value.trim();
-            this.showToast(`Updated extra income: ${bonus.description} - RM${newAmount.toFixed(2)}`, 'success');
+            this.showToast(`Updated extra income: ${bonus.description} (${newMonth} ${newYear}): RM${newAmount.toFixed(2)}`, 'success');
         }
         
         this.saveData();
