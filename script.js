@@ -6,29 +6,228 @@ class SavingsTracker {
             bonusSavings: [],
             savingsGoal: 10000
         };
+        this.currentEditItem = null;
+        this.editType = null;
+        this.currentUser = null;
+        this.serverUrl = 'http://localhost:3000/api'; // Server endpoint
         this.initializeApp();
     }
 
     initializeApp() {
-        this.loadData();
-        this.populateYearSelects();
+        this.checkAuthentication();
         this.setupEventListeners();
         this.setupDarkMode();
-        this.updateAllDisplays();
     }
 
-    // Data Management
-    loadData() {
-        const savedData = localStorage.getItem('savingsTrackerData');
-        if (savedData) {
-            this.data = JSON.parse(savedData);
-            // Migrate old data format to new format with years
-            this.migrateDataFormat();
+    checkAuthentication() {
+        const token = localStorage.getItem('authToken');
+        const user = localStorage.getItem('currentUser');
+        
+        if (token && user) {
+            this.currentUser = JSON.parse(user);
+            this.showMainApp();
+            this.loadData();
+            this.populateYearSelects();
+            this.updateAllDisplays();
+        } else {
+            this.showLoginModal();
         }
     }
 
-    saveData() {
+    showLoginModal() {
+        document.getElementById('loginModal').style.display = 'block';
+        document.getElementById('registrationModal').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'none';
+    }
+
+    showRegistration() {
+        document.getElementById('loginModal').style.display = 'none';
+        document.getElementById('registrationModal').style.display = 'block';
+        document.getElementById('mainApp').style.display = 'none';
+    }
+
+    closeRegistrationModal() {
+        document.getElementById('registrationModal').style.display = 'none';
+        this.showLoginModal();
+    }
+
+    showMainApp() {
+        document.getElementById('loginModal').style.display = 'none';
+        document.getElementById('registrationModal').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+    }
+
+    // Authentication Functions
+    async login() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        if (!username || !password) {
+            this.showToast('Please enter username and password', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.serverUrl}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password, rememberMe })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.currentUser = data.user;
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                this.showToast(`Welcome back, ${data.user.username}!`, 'success');
+                this.showMainApp();
+                this.loadData();
+                this.populateYearSelects();
+                this.updateAllDisplays();
+            } else {
+                this.showToast(data.message || 'Login failed', 'error');
+            }
+        } catch (error) {
+            this.showToast('Login error. Please try again.', 'error');
+            console.error('Login error:', error);
+        }
+    }
+
+    async register() {
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+        if (!username || !email || !password || !confirmPassword) {
+            this.showToast('Please fill in all fields', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.showToast('Passwords do not match', 'error');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showToast('Password must be at least 6 characters', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.serverUrl}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showToast('Account created successfully! Please login.', 'success');
+                this.closeRegistrationModal();
+                // Clear form
+                document.getElementById('regUsername').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPassword').value = '';
+                document.getElementById('regConfirmPassword').value = '';
+            } else {
+                this.showToast(data.message || 'Registration failed', 'error');
+            }
+        } catch (error) {
+            this.showToast('Registration error. Please try again.', 'error');
+            console.error('Registration error:', error);
+        }
+    }
+
+    logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            this.currentUser = null;
+            this.showToast('Logged out successfully', 'success');
+            this.showLoginModal();
+        }
+    }
+
+    // Data Management
+    async loadData() {
+        if (!this.currentUser) {
+            // Fallback to localStorage for demo
+            const savedData = localStorage.getItem('savingsTrackerData');
+            if (savedData) {
+                this.data = JSON.parse(savedData);
+                this.migrateDataFormat();
+            }
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${this.serverUrl}/data`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.data = data;
+                this.migrateDataFormat();
+            } else {
+                // Fallback to localStorage if server fails
+                const savedData = localStorage.getItem('savingsTrackerData');
+                if (savedData) {
+                    this.data = JSON.parse(savedData);
+                    this.migrateDataFormat();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading data from server:', error);
+            // Fallback to localStorage
+            const savedData = localStorage.getItem('savingsTrackerData');
+            if (savedData) {
+                this.data = JSON.parse(savedData);
+                this.migrateDataFormat();
+            }
+        }
+    }
+
+    async saveData() {
+        // Always save to localStorage as backup
         localStorage.setItem('savingsTrackerData', JSON.stringify(this.data));
+        
+        if (!this.currentUser) {
+            return; // Only save to server if user is logged in
+        }
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${this.serverUrl}/data`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(this.data)
+            });
+
+            if (!response.ok) {
+                console.error('Failed to save data to server');
+                this.showToast('Failed to sync with server. Data saved locally.', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving data to server:', error);
+            this.showToast('Server sync failed. Data saved locally.', 'error');
+        }
     }
 
     migrateDataFormat() {
@@ -133,15 +332,36 @@ class SavingsTracker {
         });
 
         // Goal Management
-        document.getElementById('updateGoal').addEventListener('click', () => this.updateGoal());
+        document.getElementById('setGoal').addEventListener('click', () => this.setSavingsGoal());
         document.getElementById('savingsGoal').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.updateGoal();
+            if (e.key === 'Enter') this.setSavingsGoal();
         });
 
         // Optional Features
         document.getElementById('darkModeToggle').addEventListener('click', () => this.toggleDarkMode());
-        document.getElementById('resetData').addEventListener('click', () => this.resetAllData());
+        document.getElementById('resetData').addEventListener('click', () => this.resetData());
         document.getElementById('exportCSV').addEventListener('click', () => this.exportToCSV());
+        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+
+        // Modal event listeners
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                this.closeEditModal();
+            }
+        });
+        
+        document.getElementById('editAmount').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                this.saveEdit();
+            }
+        });
+        
+        document.getElementById('editDescription').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                this.saveEdit();
+            }
+        });
 
         // Input validation
         this.setupInputValidation();
@@ -286,22 +506,42 @@ class SavingsTracker {
                 <td>${month} ${year}</td>
                 <td>RM${amount.toFixed(2)}</td>
                 <td>
-                    <span class="status-badge ${achieved ? 'status-achieved' : 'status-pending'}">
-                        ${achieved ? 'Achieved' : 'Pending'}
-                    </span>
+                    <div class="tooltip">
+                        <span class="status-badge ${achieved ? 'status-achieved' : 'status-pending'}">
+                            ${achieved ? 'Achieved' : 'Pending'}
+                        </span>
+                        <span class="tooltiptext">${achieved 
+                            ? 'This amount counts toward your savings goal and projections' 
+                            : 'This amount is planned but not yet achieved - mark as Done to count toward goals'}</span>
+                    </div>
                 </td>
                 <td>
+                    <div class="tooltip">
+                        <button class="btn btn-secondary btn-small" onclick="tracker.openEditModal('monthly', '${key}')">
+                            Edit
+                        </button>
+                        <span class="tooltiptext">Edit the amount for ${month} ${year}</span>
+                    </div>
                     ${achieved 
-                        ? `<button class="btn btn-warning btn-small" onclick="tracker.markAsPending('${key}')">
-                            Pending
-                          </button>`
-                        : `<button class="btn btn-success btn-small" onclick="tracker.markAsAchieved('${key}')">
-                            Done
-                          </button>`
+                        ? `<div class="tooltip">
+                            <button class="btn btn-warning btn-small" onclick="tracker.markAsPending('${key}')">
+                                Pending
+                              </button>
+                              <span class="tooltiptext">Mark as pending - amount won't count toward goals</span>
+                          </div>`
+                        : `<div class="tooltip">
+                            <button class="btn btn-success btn-small" onclick="tracker.markAsAchieved('${key}')">
+                                Done
+                              </button>
+                              <span class="tooltiptext">Mark as achieved - amount will count toward goals</span>
+                          </div>`
                     }
-                    <button class="btn btn-danger btn-small" onclick="tracker.deleteMonthlySavings('${key}')">
-                        Delete
-                    </button>
+                    <div class="tooltip">
+                        <button class="btn btn-danger btn-small" onclick="tracker.deleteMonthlySavings('${key}')">
+                            Delete
+                        </button>
+                        <span class="tooltiptext">Delete this savings entry</span>
+                    </div>
                 </td>
             `;
         });
@@ -401,6 +641,73 @@ class SavingsTracker {
         }
     }
 
+    // Edit Modal Functions
+    openEditModal(type, item) {
+        this.editType = type;
+        this.currentEditItem = item;
+        
+        const modal = document.getElementById('editModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const amountInput = document.getElementById('editAmount');
+        const descriptionInput = document.getElementById('editDescription');
+        
+        if (type === 'monthly') {
+            const [year, month] = item.split('-');
+            const savingsData = this.data.monthlySavings[item];
+            modalTitle.textContent = `Edit ${month} ${year} Savings`;
+            amountInput.value = savingsData.amount;
+            descriptionInput.value = `${month} ${year} Savings`;
+            descriptionInput.disabled = true;
+        } else if (type === 'bonus') {
+            const bonus = this.data.bonusSavings.find(b => b.id === item);
+            modalTitle.textContent = 'Edit Extra Income';
+            amountInput.value = bonus.amount;
+            descriptionInput.value = bonus.description;
+            descriptionInput.disabled = false;
+        }
+        
+        modal.style.display = 'block';
+        amountInput.focus();
+    }
+
+    closeEditModal() {
+        const modal = document.getElementById('editModal');
+        modal.style.display = 'none';
+        this.currentEditItem = null;
+        this.editType = null;
+        
+        // Clear form
+        document.getElementById('editAmount').value = '';
+        document.getElementById('editDescription').value = '';
+        document.getElementById('editDescription').disabled = false;
+    }
+
+    saveEdit() {
+        const amountInput = document.getElementById('editAmount');
+        const descriptionInput = document.getElementById('editDescription');
+        const newAmount = parseFloat(amountInput.value);
+        
+        if (isNaN(newAmount) || newAmount <= 0) {
+            this.showToast('Please enter a valid amount', 'error');
+            return;
+        }
+        
+        if (this.editType === 'monthly') {
+            const [year, month] = this.currentEditItem.split('-');
+            this.data.monthlySavings[this.currentEditItem].amount = newAmount;
+            this.showToast(`Updated ${month} ${year} savings: RM${newAmount.toFixed(2)}`, 'success');
+        } else if (this.editType === 'bonus') {
+            const bonus = this.data.bonusSavings.find(b => b.id === this.currentEditItem);
+            bonus.amount = newAmount;
+            bonus.description = descriptionInput.value.trim();
+            this.showToast(`Updated extra income: ${bonus.description} - RM${newAmount.toFixed(2)}`, 'success');
+        }
+        
+        this.saveData();
+        this.updateAllDisplays();
+        this.closeEditModal();
+    }
+
     updateBonusSavingsDisplay() {
         const bonusList = document.getElementById('bonusList');
         const totalElement = document.getElementById('totalBonusSavings');
@@ -439,26 +746,46 @@ class SavingsTracker {
                     <div class="bonus-info">
                         <div class="bonus-description">${bonus.month} ${bonus.year} - ${bonus.description}</div>
                         <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                            <span class="status-badge ${achieved ? 'status-achieved' : 'status-pending'}">
-                                ${achieved ? 'Achieved' : 'Pending'}
-                            </span>
+                            <div class="tooltip">
+                                <span class="status-badge ${achieved ? 'status-achieved' : 'status-pending'}">
+                                    ${achieved ? 'Achieved' : 'Pending'}
+                                </span>
+                                <span class="tooltiptext">${achieved 
+                                    ? 'This extra income counts toward your savings goal and projections' 
+                                    : 'This extra income is planned but not yet achieved - mark as Done to count toward goals'}</span>
+                            </div>
                             <small style="color: var(--text-secondary);">${bonus.date}</small>
                         </div>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                         <span class="bonus-amount">RM${bonus.amount.toFixed(2)}</span>
                         <div style="display: flex; gap: 5px;">
+                            <div class="tooltip">
+                                <button class="btn btn-secondary btn-small" onclick="tracker.openEditModal('bonus', ${bonus.id})">
+                                    Edit
+                                </button>
+                                <span class="tooltiptext">Edit amount and description</span>
+                            </div>
                             ${achieved 
-                                ? `<button class="btn btn-warning btn-small" onclick="tracker.markBonusAsPending(${bonus.id})">
-                                    Pending
-                                  </button>`
-                                : `<button class="btn btn-success btn-small" onclick="tracker.markBonusAsAchieved(${bonus.id})">
-                                    Done
-                                  </button>`
+                                ? `<div class="tooltip">
+                                    <button class="btn btn-warning btn-small" onclick="tracker.markBonusAsPending(${bonus.id})">
+                                        Pending
+                                      </button>
+                                      <span class="tooltiptext">Mark as pending - amount won't count toward goals</span>
+                                  </div>`
+                                : `<div class="tooltip">
+                                    <button class="btn btn-success btn-small" onclick="tracker.markBonusAsAchieved(${bonus.id})">
+                                        Done
+                                      </button>
+                                      <span class="tooltiptext">Mark as achieved - amount will count toward goals</span>
+                                  </div>`
                             }
-                            <button class="btn btn-danger btn-small" onclick="tracker.deleteBonusSavings(${bonus.id})">
-                                Delete
-                            </button>
+                            <div class="tooltip">
+                                <button class="btn btn-danger btn-small" onclick="tracker.deleteBonusSavings(${bonus.id})">
+                                    Delete
+                                </button>
+                                <span class="tooltiptext">Delete this extra income entry</span>
+                            </div>
                         </div>
                     </div>
                 `;

@@ -7,16 +7,90 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Savings Tracker Login</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Enter your password">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="rememberMe"> Remember me
+                    </label>
+                </div>
+                <div class="form-group">
+                    <p>Don't have an account? <a href="#" onclick="tracker.showRegistration()">Register here</a></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="tracker.login()">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registrationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Account</h3>
+                <span class="close" onclick="tracker.closeRegistrationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="regUsername">Username:</label>
+                    <input type="text" id="regUsername" placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email:</label>
+                    <input type="email" id="regEmail" placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password:</label>
+                    <input type="password" id="regPassword" placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password:</label>
+                    <input type="password" id="regConfirmPassword" placeholder="Confirm your password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="tracker.register()">Create Account</button>
+                <button class="btn btn-secondary" onclick="tracker.closeRegistrationModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="mainApp" class="container" style="display: none;">
         <header>
             <h1>💰 Savings Tracker & Projection Tool</h1>
-            <div class="header-controls">
-                <button id="darkModeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
-                <button id="resetData" class="btn btn-danger">🗑️ Reset All Data</button>
+            <div class="action-buttons">
+                <div class="tooltip">
+                    <button id="darkModeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
+                    <span class="tooltiptext">Toggle dark/light theme</span>
+                </div>
+                <div class="tooltip">
+                    <button id="resetData" class="btn btn-danger">Reset All Data</button>
+                    <span class="tooltiptext">Clear all saved data (cannot be undone)</span>
+                </div>
+                <div class="tooltip">
+                    <button id="exportCSV" class="btn btn-primary">Export to CSV</button>
+                    <span class="tooltiptext">Download your savings data as Excel file</span>
+                </div>
+                <div class="tooltip">
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                    <span class="tooltiptext">Logout from your account</span>
+                </div>
             </div>
-        </header>
-
-        <main>
             <!-- Main Content Grid -->
             <div class="content-grid">
                 <!-- Monthly Savings Section -->
@@ -25,32 +99,41 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="yearSelect">Select Year:</label>
-                            <select id="yearSelect">
-                                <!-- Years will be populated by JavaScript -->
-                            </select>
+                            <div class="tooltip">
+                                <select id="yearSelect">
+                                    <!-- Years will be populated by JavaScript -->
+                                </select>
+                                <span class="tooltiptext">Choose the year for your monthly savings</span>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="monthSelect">Select Month:</label>
-                            <select id="monthSelect">
-                                <option value="">Choose a month...</option>
-                                <option value="January">January</option>
-                                <option value="February">February</option>
-                                <option value="March">March</option>
-                                <option value="April">April</option>
-                                <option value="May">May</option>
-                                <option value="June">June</option>
-                                <option value="July">July</option>
-                                <option value="August">August</option>
-                                <option value="September">September</option>
-                                <option value="October">October</option>
-                                <option value="November">November</option>
-                                <option value="December">December</option>
-                            </select>
+                            <div class="tooltip">
+                                <select id="monthSelect">
+                                    <option value="">Choose a month...</option>
+                                    <option value="January">January</option>
+                                    <option value="February">February</option>
+                                    <option value="March">March</option>
+                                    <option value="April">April</option>
+                                    <option value="May">May</option>
+                                    <option value="June">June</option>
+                                    <option value="July">July</option>
+                                    <option value="August">August</option>
+                                    <option value="September">September</option>
+                                    <option value="October">October</option>
+                                    <option value="November">November</option>
+                                    <option value="December">December</option>
+                                </select>
+                                <span class="tooltiptext">Select the month for your savings entry</span>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="monthlyAmount">Amount Saved (RM):</label>
-                        <input type="number" id="monthlyAmount" placeholder="0.00" min="0" step="0.01">
+                        <div class="tooltip">
+                            <input type="number" id="monthlyAmount" placeholder="0.00" min="0" step="0.01">
+                            <span class="tooltiptext">Enter the amount you saved for this month</span>
+                        </div>
                     </div>
                     <button id="addMonthlySavings" class="btn btn-primary">Add Savings</button>
                     
@@ -86,36 +169,48 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="bonusYearSelect">Select Year:</label>
-                            <select id="bonusYearSelect">
-                                <!-- Years will be populated by JavaScript -->
-                            </select>
+                            <div class="tooltip">
+                                <select id="bonusYearSelect">
+                                    <!-- Years will be populated by JavaScript -->
+                                </select>
+                                <span class="tooltiptext">Choose the year for this extra income</span>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="bonusMonthSelect">Select Month:</label>
-                            <select id="bonusMonthSelect">
-                                <option value="">Choose a month...</option>
-                                <option value="January">January</option>
-                                <option value="February">February</option>
-                                <option value="March">March</option>
-                                <option value="April">April</option>
-                                <option value="May">May</option>
-                                <option value="June">June</option>
-                                <option value="July">July</option>
-                                <option value="August">August</option>
-                                <option value="September">September</option>
-                                <option value="October">October</option>
-                                <option value="November">November</option>
-                                <option value="December">December</option>
-                            </select>
+                            <div class="tooltip">
+                                <select id="bonusMonthSelect">
+                                    <option value="">Choose a month...</option>
+                                    <option value="January">January</option>
+                                    <option value="February">February</option>
+                                    <option value="March">March</option>
+                                    <option value="April">April</option>
+                                    <option value="May">May</option>
+                                    <option value="June">June</option>
+                                    <option value="July">July</option>
+                                    <option value="August">August</option>
+                                    <option value="September">September</option>
+                                    <option value="October">October</option>
+                                    <option value="November">November</option>
+                                    <option value="December">December</option>
+                                </select>
+                                <span class="tooltiptext">Select the month for this extra income</span>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="bonusDescription">Description:</label>
-                        <input type="text" id="bonusDescription" placeholder="e.g., Bonus, Side Income">
+                        <div class="tooltip">
+                            <input type="text" id="bonusDescription" placeholder="e.g., Bonus, Side Income">
+                            <span class="tooltiptext">Describe the source of this extra income</span>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="bonusAmount">Amount (RM):</label>
-                        <input type="number" id="bonusAmount" placeholder="0.00" min="0" step="0.01">
+                        <div class="tooltip">
+                            <input type="number" id="bonusAmount" placeholder="0.00" min="0" step="0.01">
+                            <span class="tooltiptext">Enter the extra income amount</span>
+                        </div>
                     </div>
                     <button id="addBonusSavings" class="btn btn-primary">Add Extra Income</button>
                     
@@ -135,9 +230,15 @@
                     <h2>Savings Goal & Progress</h2>
                     <div class="form-group">
                         <label for="savingsGoal">Savings Goal (RM):</label>
-                        <input type="number" id="savingsGoal" placeholder="10000.00" min="0" step="0.01">
+                        <div class="tooltip">
+                            <input type="number" id="savingsGoal" placeholder="10000.00" min="0" step="0.01">
+                            <span class="tooltiptext">Set your target savings goal amount</span>
+                        </div>
                     </div>
-                    <button id="updateGoal" class="btn btn-primary">Update Goal</button>
+                    <div class="tooltip">
+                        <button id="setGoal" class="btn btn-primary">Set Goal</button>
+                        <span class="tooltiptext">Update your savings goal</span>
+                    </div>
                     
                     <div class="progress-section">
                         <div class="progress-stats">
@@ -191,5 +292,35 @@
     </div>
 
     <script src="script.js"></script>
+<!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Edit Amount</h3>
+                <span class="close" onclick="tracker.closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editAmount">New Amount (RM):</label>
+                    <input type="number" id="editAmount" placeholder="0.00" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="editDescription">Description:</label>
+                    <input type="text" id="editDescription" placeholder="Enter description">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="tracker.saveEdit()">Save Changes</button>
+                <button class="btn btn-secondary" onclick="tracker.closeEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+<!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Savings Tracker | Developed by <strong>Amin</strong></p>
+            <p class="footer-note">Track your savings goals and achieve financial freedom</p>
+        </footer>
+
 </body>
 </html>
