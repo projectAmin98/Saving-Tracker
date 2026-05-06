@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savings Tracker & Projection Tool</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Savings Tracker & Projection Tool</h1>
+            <div class="header-controls">
+                <button id="darkModeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
+                <button id="resetData" class="btn btn-danger">🗑️ Reset All Data</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Main Content Grid -->
+            <div class="content-grid">
+                <!-- Monthly Savings Section -->
+                <div class="card">
+                    <h2>Monthly Savings Tracker</h2>
+                    <div class="form-group">
+                        <label for="monthSelect">Select Month:</label>
+                        <select id="monthSelect">
+                            <option value="">Choose a month...</option>
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                            <option value="June">June</option>
+                            <option value="July">July</option>
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monthlyAmount">Amount Saved (RM):</label>
+                        <input type="number" id="monthlyAmount" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                    <button id="addMonthlySavings" class="btn btn-primary">Add Savings</button>
+                    
+                    <div class="savings-table-container">
+                        <h3>Monthly Savings Summary</h3>
+                        <table id="monthlySavingsTable">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Amount Saved</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlySavingsBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td><strong>Total Monthly Savings</strong></td>
+                                    <td id="totalMonthlySavings">RM0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bonus Savings Section -->
+                <div class="card">
+                    <h2>Extra / Bonus Savings</h2>
+                    <div class="form-group">
+                        <label for="bonusMonthSelect">Select Month:</label>
+                        <select id="bonusMonthSelect">
+                            <option value="">Choose a month...</option>
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                            <option value="June">June</option>
+                            <option value="July">July</option>
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bonusDescription">Description:</label>
+                        <input type="text" id="bonusDescription" placeholder="e.g., Bonus, Side Income">
+                    </div>
+                    <div class="form-group">
+                        <label for="bonusAmount">Amount (RM):</label>
+                        <input type="number" id="bonusAmount" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                    <button id="addBonusSavings" class="btn btn-primary">Add Bonus</button>
+                    
+                    <div class="bonus-list-container">
+                        <h3>Bonus Savings List</h3>
+                        <div id="bonusList" class="bonus-list">
+                            <!-- Dynamic content -->
+                        </div>
+                        <div class="bonus-total">
+                            <strong>Total Bonus Savings: <span id="totalBonusSavings">RM0.00</span></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Savings Goal & Progress Section -->
+                <div class="card">
+                    <h2>Savings Goal & Progress</h2>
+                    <div class="form-group">
+                        <label for="savingsGoal">Savings Goal (RM):</label>
+                        <input type="number" id="savingsGoal" placeholder="10000.00" min="0" step="0.01">
+                    </div>
+                    <button id="updateGoal" class="btn btn-primary">Update Goal</button>
+                    
+                    <div class="progress-section">
+                        <div class="progress-stats">
+                            <div class="stat-item">
+                                <label>Total Savings:</label>
+                                <span id="totalSavings" class="stat-value">RM0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>Remaining:</label>
+                                <span id="remainingAmount" class="stat-value">RM0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>Progress:</label>
+                                <span id="progressPercentage" class="stat-value">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-bar-container">
+                            <div id="progressBar" class="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projection Analysis Section -->
+                <div class="card">
+                    <h2>Projection Analysis</h2>
+                    <div class="projection-stats">
+                        <div class="stat-item">
+                            <label>Average Monthly Savings:</label>
+                            <span id="averageMonthly" class="stat-value">RM0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Months to Goal:</label>
+                            <span id="monthsToGoal" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Estimated Completion:</label>
+                            <span id="estimatedCompletion" class="stat-value">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="export-section">
+                        <button id="exportCSV" class="btn btn-secondary">📊 Export to CSV</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
